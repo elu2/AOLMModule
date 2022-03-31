@@ -484,6 +484,7 @@ LOO_validation <- function(xy, alpha_df, test_indices){
   agg_subset <- train %>% select(min_prots, y)
   test_x <- test %>% select(min_prots) %>% as.matrix()
   
+  cv_mces <- c()
   # 1-Dimensional optimization of alphas
   for (j in 1:length(alphas)){
     mod_out <- layered_model(agg_subset, 1, nfolds=nrow(agg_subset), alpha1=alphas[j], min_params=2, family=family, type.measure=type.measure)
