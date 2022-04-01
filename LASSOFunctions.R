@@ -514,7 +514,6 @@ roc_validation <- function(actual, pred){
   roc_data <- roc(actual, pred)
   AUC <- round(calculateAUC(roc_data$sensitivities, roc_data$specificities), 3)
   
-  png("ROCCurve.png")
   ggroc(roc_data, color="red") + 
     geom_label(aes(.1, .1, label=paste("AUC:", AUC))) + 
     labs(x="Specificity", y="Sensitivity", title="") + 
@@ -523,5 +522,4 @@ roc_validation <- function(actual, pred){
     geom_segment(aes(x = 1, xend = 0, y = 0, yend = 1), color="black", linetype="dashed") + 
     xlim(1, 0) + 
     ylim(0, 1)
-  dev.off()
 }
