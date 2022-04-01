@@ -4,7 +4,7 @@ xy_rds <- ""
 grid_path <- "./grids/"
 if (!(file.exists(grid_path))){dir.create(grid_path)}
 # Path of csv to write validation predictions to
-val_csv <- ""
+val_csv <- "./validationOut.csv"
 
 # glmnet "family" argument
 family <- "binomial"
