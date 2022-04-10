@@ -221,16 +221,16 @@ confusion_f <- function(x, y, zflm, iterations, weights, alpha, family="binomial
     fit <- glmnet(szx, szy, family=family, type.measure=type.measure, alpha=alpha, lambda=zflm, weights=cweights)
     
     type <- type.measure
-    if (type.measure == "mse"){type <- "response"}
-    pred <- as.numeric(predict(fit, newx=held_szx, type=type, s=fit$lambda.min))
+    if (type.measure == "mse"){type <- "response"; pred <- as.numeric(predict(fit, newx=held_szx, type=type, s=fit$lambda.min))}
+    else{pred <- as.numeric(predict(fit, newx=held_szx, type=type, s=fit$lambda.min)>0.5)}
     
-    incorrect <- held_szy[!held_szy == pred]
-    correct <- held_szy[held_szy == pred]
+    incorrect <- pred[!held_szy == pred]
+    correct <- pred[held_szy == pred]
     
     # Calculate, record false negative and false positive rates
-    fnr <- sum(!incorrect)/(sum(!incorrect)+sum(correct))
+    fnr <- sum(!incorrect)/(sum(!incorrect) + sum(correct))
     all_fnr[i] <- fnr
-    fpr <- sum(incorrect)/(sum(sum(incorrect)+sum(!correct)))
+    fpr <- sum(incorrect)/(sum(incorrect)+sum(!correct))
     all_fpr[i] <- fpr
   }
   
