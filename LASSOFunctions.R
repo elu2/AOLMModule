@@ -394,10 +394,11 @@ LOOCV_alpha_testing <- function(xy, n_alphas, family="binomial", type.measure="c
   alpha2s <- c()
   err_col <- c()
   coefs <- c()
+  fits <- list()
   
   l1_errors <- vector(length=length(alphas))
   l2_errors <- matrix(nrow=length(alphas),ncol=length(alphas))
-  
+  k <- 1
   i <- 1
   for (alpha1 in alphas){
     writeLines(paste("Alpha 1: ", alpha1, sep=""))
@@ -417,8 +418,10 @@ LOOCV_alpha_testing <- function(xy, n_alphas, family="binomial", type.measure="c
       
       err_col <- c(err_col, min(loocv2$cvm))
       coefs <- c(coefs, list(nzcs))
+      fits[[k]] <- loocv2
       
       j <- j + 1
+      k <- k + 1
     }
     i <- i + 1
   }
@@ -428,6 +431,7 @@ LOOCV_alpha_testing <- function(xy, n_alphas, family="binomial", type.measure="c
   
   data_df <- data.frame(Alpha1=alpha1s, Alpha2=alpha2s, Errors=err_col)
   data_df$Coefs <- coefs
+  data_df$Fits <- fits
   
   out <- list(l1_errors, l2_errors, data_df)
   
