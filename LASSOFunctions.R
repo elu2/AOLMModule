@@ -163,6 +163,8 @@ y_weights <- function(xy){
 nzcs <- function(coefs){
   nzc <- coefs@Dimnames[[1]][coefs@i + 1]
   nzc <- nzc[2:length(nzc)]
+  
+  return(nzc)
 }
 
 # Extracts the non-zero coefficients from a cross-validated model and a lambda value
@@ -221,16 +223,16 @@ confusion_f <- function(x, y, zflm, iterations, weights, alpha, family="binomial
     fit <- glmnet(szx, szy, family=family, type.measure=type.measure, alpha=alpha, lambda=zflm, weights=cweights)
     
     type <- type.measure
-    if (type.measure == "mse"){type <- "response"; pred <- as.numeric(predict(fit, newx=held_szx, type=type, s=fit$lambda.min))}
-    else{pred <- as.numeric(predict(fit, newx=held_szx, type=type, s=fit$lambda.min)>0.5)}
+    if (type.measure == "mse"){type <- "response"}
+    pred <- as.numeric(predict(fit, newx=held_szx, type=type, s=fit$lambda.min))
     
-    incorrect <- pred[!held_szy == pred]
-    correct <- pred[held_szy == pred]
+    incorrect <- held_szy[!held_szy == pred]
+    correct <- held_szy[held_szy == pred]
     
     # Calculate, record false negative and false positive rates
-    fnr <- sum(!incorrect)/(sum(!incorrect) + sum(correct))
+    fnr <- sum(!incorrect)/(sum(!incorrect)+sum(correct))
     all_fnr[i] <- fnr
-    fpr <- sum(incorrect)/(sum(incorrect)+sum(!correct))
+    fpr <- sum(incorrect)/(sum(sum(incorrect)+sum(!correct)))
     all_fpr[i] <- fpr
   }
   
@@ -250,14 +252,13 @@ confusion_f <- function(x, y, zflm, iterations, weights, alpha, family="binomial
 # alphai: Elastic Net alpha value for layers 2+
 # weighted: add weights to observations. Suggested only for binomial classification
 # save: write out plots and errors
-layered_model <- function(xy, layers, nfolds=5, alpha1=1, alphai=1, min_params=15, family="binomial", type.measure="class", weighted=T, save=F, parallel=F, verbose=F){
+layered_model <- function(xy, layers, nfolds=5, alpha1=1, alphai=1, min_params=1, family="binomial", type.measure="class", weighted=T, save=F, parallel=F, verbose=F){
   # Store false rates
   fnrs <- rep(0, layers)
   fprs <- rep(0, layers)
   oErrs <- rep(0, layers)
   lms <- rep(0, layers)
   
-  xy <- xy %>% arrange(y)
   x <- as.matrix(xy %>% select(-y))
   y <- as.matrix(xy %>% select(y))
   
@@ -345,7 +346,6 @@ layered_model <- function(xy, layers, nfolds=5, alpha1=1, alphai=1, min_params=1
 
 
 LOOCV <- function(xy, alpha, family="binomial", type.measure="class", weighted=T){
-  xy <- xy %>% arrange(y)
   x <- as.matrix(xy %>% select(-y))
   y <- as.matrix(xy %>% select(y))
   
@@ -501,11 +501,55 @@ LOO_validation <- function(xy, alpha_df, test_indices){
   s <- mod_out$FinalLambdaMin
   fit <- mod_out$final_fit
   
+  pla2_pos <- as.numeric("P14555" %in% mod_out$FinalCoefficients)
+  write.table(pla2_pos, "./pla2Pos.csv", row.names=F, append=T, sep=",", col.names=!file.exists("./pla2Pos.csv"))
+  
+  
   # Make prediction
   val_pred <- c(predict(fit, newx=test_x, type="response", s=fit$lambda.min))
   
   # Reformat and write
   dat_df <- data.frame(pred=val_pred, actual=test_y)
+  
+  return(dat_df)
+}
+
+
+# alpha_df: dataframe of alpha grid. Output from alpha_testing.
+# test_indices: indices of xy which were used to test
+LOO_mean_validation <- function(xy, alpha_df, test_indices){
+  test <- xy[test_indices, ]
+  test_y <- test %>% pull(y)
+  train <- xy[-test_indices, ]
+  
+  # Extract species from minimum error rates' alphas
+  errs <- alpha_df$Errors
+  min_errs <- alpha_df[which(errs == min(errs)), ]
+  
+  preds <- data.frame()
+  for (i in 1:nrow(min_errs)){
+    skip <- F
+    
+    fit <- min_errs$Fits[[i]]
+    
+    coef_fit <- coef(fit)
+    subset_coefs <- rownames(coef_fit)[2:length(coef_fit)]
+    test_x <- as.matrix(test %>% select(subset_coefs))
+    
+    fit$lambda.min
+    
+    #pred <- tryCatch({predict(fit, newx=test_x, type="response", s=fit$lambda.min)}, error=function(e){skip <<- T; print("skipped 1")})
+    #if(skip){next}
+    
+    pred <- predict(fit, newx=test_x, type="response", s=fit$lambda.min)
+    
+    pred <- t(data.frame(pred))
+    preds <- rbind(preds, pred)
+  }
+  
+  mean_preds <- colMeans(preds)
+  
+  dat_df <- data.frame(meanPred=mean_preds, actual=test_y, row.names=NULL)
   
   return(dat_df)
 }
