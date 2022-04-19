@@ -571,3 +571,50 @@ roc_validation <- function(actual, pred){
     xlim(1, 0) + 
     ylim(0, 1)
 }
+
+
+# Modular Alpha Testing
+# Selects coefficients from the best performing elastic net model
+mod_alpha_testing <- function(xy, n_alphas=11){
+  options(warn=-1)
+  alphas <- seq(0, 1, length.out=n_alphas)
+  
+  # Test array of alpha values and record coefficients, errors
+  enet_coefs <- c()
+  enet_errs <- c()
+  for (j in 1:n_alphas){
+    fit <- LOOCV(xy, alphas[j])
+    enet_coefs[j] <- list(extract_nzc(fit, lm=fit$lambda.min, family="binomial"))
+    enet_errs[j] <- min(fit$cvm)
+  }
+  
+  # Record coefficients with lowest error(s)
+  fin_min_coefs <- unique(unlist(enet_coefs[which(enet_errs == min(enet_errs))]))
+  
+  # Return lowest error coefs and errors
+  l_out <- list(fin_min_coefs, enet_coefs, enet_errs, alphas)
+  l_out <- setNames(l_out, c("FinMinCoefs", "Coefs", "Errors", "Alphas"))
+  
+  return(l_out)
+}
+
+
+# Iterate n_iter times to select best elastic net model and extract coefficients
+frequency_test <- function(xy, n_iter=100, n_alphas=11, rs_prop=0.9){
+  options(warn=-1)
+  cumulative_min_coefs <- c()
+  
+  for (i in 1:n_iter){
+    c(train, test, test_indices) %<-% train_test(xy, 0.9)
+    mat_out <- mod_alpha_testing(train)
+    cumulative_min_coefs <- c(cumulative_min_coefs, mat_out$FinMinCoefs)
+  }
+  
+  # Construct frequency dataframe
+  freq_df <- count(cumulative_min_coefs)
+  freq_df <- freq_df[order(freq_df$freq, decreasing=T),]
+  row.names(freq_df) <- 1:nrow(freq_df)
+  colnames(freq_df) <- c("ID", "freq")
+  
+  return(freq_df)
+}
